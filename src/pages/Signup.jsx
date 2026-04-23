@@ -16,6 +16,7 @@ function Signup() {
     password: "",
     confirmPassword: "",
     mobile: "",
+    city: "",
     address: "",
     fileUrl: "",
   });
@@ -25,6 +26,7 @@ function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Handle form input changes
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -32,29 +34,34 @@ function Signup() {
     });
   };
 
+  // Handle file selection and create preview URL
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
 
+    // Create a preview URL for the selected image
     if (selectedFile) {
       setPreview(URL.createObjectURL(selectedFile));
     }
   };
 
+  // Upload image to Cloudinary and return the URL
   const uploadImage = async () => {
     try {
       const data = new FormData();
       data.append("file", file);
       data.append("upload_preset", "sumang_upload");
 
+      // Make API call to Cloudinary
       const res = await fetch(
         "https://api.cloudinary.com/v1_1/dhc9vy4v2/image/upload",
         {
           method: "POST",
           body: data,
-        }
+        },
       );
 
+      // Parse the response and return the secure URL of the uploaded image
       const result = await res.json();
       return result.secure_url;
     } catch (error) {
@@ -63,9 +70,11 @@ function Signup() {
     }
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate that password and confirm password match
     if (form.password !== form.confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -74,10 +83,12 @@ function Signup() {
     try {
       let imageUrl = "";
 
+      // Upload image if file is selected
       if (file) {
         imageUrl = await uploadImage();
       }
 
+      // Sign up user with AWS Cognito
       await signUp({
         username: form.email,
         password: form.password,
@@ -90,20 +101,22 @@ function Signup() {
         },
       });
 
+      // Save user details in database
       await API.post("/signup", {
         name: form.name,
         email: form.email,
         mobile: form.mobile,
         address: form.address,
         fileUrl: imageUrl,
+        city: form.city,
       });
 
       toast.success("Signup Successful! OTP sent to email ");
 
+      // Navigate to verification page with email in state
       navigate("/verify", {
         state: { email: form.email },
       });
-
     } catch (err) {
       console.log(err);
       toast.error(err.message || "Signup Failed");
@@ -117,12 +130,10 @@ function Signup() {
 
       <Container className="d-flex justify-content-center align-items-center h-100">
         <div className="signup-card p-4">
-
           <h2 className="text-center fw-bold mb-2">Create Account</h2>
           <p className="text-center text-muted mb-4">Start your journey</p>
 
           <Form onSubmit={handleSubmit}>
-
             <Form.Group className="mb-3">
               <Form.Control
                 name="name"
@@ -150,6 +161,7 @@ function Signup() {
                   placeholder="Password"
                   onChange={handleChange}
                   required
+                  autoComplete="new-password"
                 />
                 <Button
                   variant="outline-secondary"
@@ -168,6 +180,7 @@ function Signup() {
                   placeholder="Confirm Password"
                   onChange={handleChange}
                   required
+                  autoComplete="new-password"
                 />
                 <Button
                   variant="outline-secondary"
@@ -182,6 +195,15 @@ function Signup() {
               <Form.Control
                 name="mobile"
                 placeholder="Mobile Number"
+                onChange={handleChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Control
+                name="city"
+                placeholder="City"
+                value={form.city}
                 onChange={handleChange}
               />
             </Form.Group>
@@ -216,7 +238,6 @@ function Signup() {
             <p className="text-center mt-3">
               Already have an account? <Link to="/login">Login</Link>
             </p>
-
           </Form>
         </div>
       </Container>
