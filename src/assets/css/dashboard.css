@@ -1,0 +1,61 @@
+body {
+      background: #f5f7fb;
+    }
+
+    .header-card {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .search-box {
+      width: 200px;
+      border-radius: 20px;
+      padding: 6px 15px;
+    }
+
+    .logout-btn {
+      background: black;
+      border-radius: 20px;
+    }
+
+    .timer-box {
+      background: rgba(255,255,255,0.2);
+      padding: 6px 15px;
+      border-radius: 20px;
+      color: white;
+      font-weight: bold;
+    }
+
+    .user-card {
+      border-radius: 20px;
+      transition: 0.3s;
+      overflow: hidden;
+    }
+
+    .user-card:hover {
+      transform: translateY(-5px) scale(1.02);
+    }
+
+    .card-img {
+      height: 180px;
+      object-fit: cover;
+    }
+
+    .btn-edit {
+      background: #0dcaf0;
+      border: none;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      border: none;
+    }
+
+    .btn-success-custom {
+      background: #28a745;
+      border: none;
+    }
+
+    .btn-cancel {
+      background: gray;
+      border: none;
+    }
