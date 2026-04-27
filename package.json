@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "project-indixpert",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,26 +10,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aws-amplify/auth": "^6.19.1",
     "aws-amplify": "^6.16.4",
-    "axios": "^1.15.1",
+    "axios": "^1.15.2",
     "bootstrap": "^5.3.8",
     "react": "^19.2.5",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.5",
     "react-icons": "^5.6.0",
-    "react-router-dom": "^7.14.1",
-    "react-toastify": "^11.1.0"
+    "react-router-dom": "^7.14.2",
+    "react-toastify": "^11.1.0",
+    "sass": "^1.99.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^9.39.4",
+    "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
-    "vite": "^8.0.9"
+    "vite": "^8.0.10"
   }
 }

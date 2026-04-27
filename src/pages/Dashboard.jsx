@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import {
-  Container,
-  Form,
-  Row,
-  Col,
-  Card,
-  Button,
-} from "react-bootstrap";
+import { Container, Form, Row, Col, Card, Button, Navbar } from "react-bootstrap";
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { signOut } from "aws-amplify/auth";
-import "../assets/css/dashboard.css";
+
+import API from "../services/api";
+import "../assets/scss/dashboard.scss";
 
 function Dashboard() {
   const [users, setUsers] = useState([]);
@@ -29,40 +24,33 @@ function Dashboard() {
   const [total, setTotal] = useState(0);
 
   const [timeLeft, setTimeLeft] = useState("");
-  const [remainingMs, setRemainingMs] = useState(0);
 
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   const limit = 8;
+
   const navigate = useNavigate();
 
-  // FETCH USERS
-  const fetchUsers = async (pageNo) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(
-        `http://127.0.0.1:8000/users?page=${pageNo}&limit=${limit}&search=${search}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setUsers(res.data.data);
-      setTotal(res.data.total);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load users");
-    }
-  };
-
+  /* Auth Check */
   useEffect(() => {
-    fetchUsers(page);
-  }, [page, search]); // 🔥 search add kiya
+    const token =
+      localStorage.getItem("idToken") || localStorage.getItem("token");
 
-  const totalPages = Math.ceil(total / limit);
+    if (!token) {
+      navigate("/login");
+    }
+  }, []);
+
+  /* Debounce Search */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // PAGINATION NUMBERS
   const getPageNumbers = () => {
@@ -84,56 +72,96 @@ function Dashboard() {
     return pages;
   };
 
-  // TOKEN TIMER
+  // ALL PAGE NUMBERS
+  const getAllPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  /* Fetch Users */
+  const fetchUsers = async (pageNo) => {
+    try {
+      const res = await API.get(
+        `/users?page=${pageNo}&limit=${limit}&search=${search}`,
+      );
+
+      setUsers(res.data.data || []);
+
+      setTotal(res.data.total || 0);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load users");
+    }
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
+
+  if (!token) return;
+
+  fetchUsers(page);
+}, [page, search]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  /* Token Timer */
+  useEffect(() => {
+    const token =
+      localStorage.getItem("idToken") || localStorage.getItem("token");
 
     if (!token) {
       navigate("/login");
       return;
     }
 
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
 
-    const interval = setInterval(() => {
-      const remainingTime = payload.exp * 1000 - Date.now();
+      const interval = setInterval(() => {
+        const remainingTime = payload.exp * 1000 - Date.now();
 
-      setRemainingMs(remainingTime);
+        if (remainingTime <= 0) {
+          clearInterval(interval);
 
-      if (remainingTime <= 0) {
-        clearInterval(interval);
-        localStorage.clear();
-        window.location.href = "/login";
-      } else {
-        const minutes = Math.floor(remainingTime / 60000);
-        const seconds = Math.floor((remainingTime % 60000) / 1000);
+          localStorage.clear();
 
-        setTimeLeft(`${minutes}m ${seconds}s`);
-      }
-    }, 1000);
+          navigate("/login");
+        } else {
+          const minutes = Math.floor(remainingTime / 60000);
 
-    return () => clearInterval(interval);
+          const seconds = Math.floor((remainingTime % 60000) / 1000);
+
+          setTimeLeft(`${minutes}m ${seconds}s`);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } catch (error) {
+      localStorage.clear();
+      navigate("/login");
+    }
   }, []);
 
-  // DELETE
+  /* Delete */
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/delete/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      await API.delete(`/delete/${id}`);
 
       toast.success("Deleted Successfully");
+
       fetchUsers(page);
     } catch {
       toast.error("Delete failed");
     }
   };
 
-  // EDIT
+  /* Edit */
   const handleEdit = (item) => {
     setEditId(item.id);
+
     setEditData({
       name: item.name || "",
       email: item.email || "",
@@ -150,89 +178,66 @@ function Dashboard() {
     });
   };
 
-  // SAVE
+  /* Save */
   const handleSave = async (id) => {
     try {
-      await axios.put(
-        `http://127.0.0.1:8000/update/${id}`,
-        editData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      await API.put(`/update/${id}`, editData);
 
       toast.success("Updated Successfully");
 
       setEditId(null);
+
       fetchUsers(page);
     } catch {
       toast.error("Update failed");
     }
   };
 
-  // LOGOUT
-  const handleLogout = async () => {
-    await signOut();
-    localStorage.clear();
-    window.location.href = "/login";
-  };
-
   return (
     <Container className="mt-4">
+      <Navbar expand="lg" className="bg-white shadow rounded-4 px-4 py-3 mb-4">
+        <Container fluid>
+          <div
+            className="d-flex justify-content-between align-items-center w-100 flex-wrap gap-3"
+          >
+            <div>
+              <h4 className="fw-bold mb-0 text-primary">User Dashboard</h4>
 
-      {/* HEADER */}
-      <Card className="p-4 mb-4 border-0 shadow-lg rounded-4 header-card">
-        <div className="d-flex flex-wrap justify-content-between align-items-center">
+              <small className="text-muted">
+                Manage users and monitor activity
+              </small>
+            </div>
 
-          <h3 className="fw-bold text-white">User Dashboard</h3>
+            <div
+              className="d-flex align-items-center gap-3 flex-wrap"
+            >
+              <span className="timer-box bg-dark">Time:- {timeLeft}</span>
 
-          <div className="d-flex align-items-center flex-wrap gap-2">
-
-            {/* TIMER */}
-            <span className="timer-box">
-              Timer:- {timeLeft}
-            </span>
-
-            {/* SEARCH */}
-            <Form.Control
-              type="text"
-              placeholder="🔍 Search..."
-              className="search-box"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-
-            {/* LOGOUT */}
-            <Button className="logout-btn" onClick={handleLogout}>
-              Logout
-            </Button>
-
+              <Form>
+                <Form.Control
+                  type="search"
+                  placeholder="Search users..."
+                  className="search-box"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </Form>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Container>
+      </Navbar>
 
-      {/* CARDS */}
-      <Row>
+      <Row className="g-3">
         {users.map((item) => (
           <Col md={3} key={item.id} className="mb-4">
-            <Card className="user-card border-0 shadow-sm">
-
-              {/* IMAGE */}
-              <Card.Img
-                variant="top"
+            <Card className="user-card border-0 rounded-4 p-4 shadow-sm">
+              <img
                 src={item.image || "https://picsum.photos/300/200"}
-                loading="lazy"
-                className="card-img"
+                className="rounded-circle mx-auto"
+                width="100"
               />
 
               <Card.Body>
-
-                {/* NAME */}
                 {editId === item.id ? (
                   <Form.Control
                     className="mb-2"
@@ -246,48 +251,80 @@ function Dashboard() {
                   </Card.Title>
                 )}
 
-                {/* DETAILS */}
                 {editId === item.id ? (
                   <>
-                    <Form.Control className="mb-2" name="email" value={editData.email} readOnly disabled onChange={handleChange} />
-                    <Form.Control className="mb-2" name="mobile" value={editData.mobile} onChange={handleChange} />
-                    <Form.Control className="mb-2" name="city" value={editData.city} onChange={handleChange} />
-                    <Form.Control className="mb-2" name="address" value={editData.address} onChange={handleChange} />
+                    <Form.Control
+                      className="mb-2"
+                      name="email"
+                      value={editData.email}
+                      readOnly
+                      disabled
+                    />
+
+                    <Form.Control
+                      className="mb-2"
+                      name="mobile"
+                      value={editData.mobile}
+                      onChange={handleChange}
+                    />
+
+                    <Form.Control
+                      className="mb-2"
+                      name="city"
+                      value={editData.city}
+                      onChange={handleChange}
+                    />
+
+                    <Form.Control
+                      className="mb-2"
+                      name="address"
+                      value={editData.address}
+                      onChange={handleChange}
+                    />
                   </>
                 ) : (
                   <>
-                    <p className="text-muted small mb-1">{item.email}</p>
-                    <p className="mb-1">📞 {item.mobile}</p>
-                    <p className="mb-1">📍 {item.city}</p>
+                    <p className="small text-muted">{item.email}</p>
+
+                    <p>📞 {item.mobile}</p>
+
+                    <p>📍 {item.city}</p>
+
                     <p className="small text-muted">{item.address}</p>
                   </>
                 )}
 
-                {/* BUTTONS */}
                 <div className="d-flex justify-content-between mt-3">
                   {editId === item.id ? (
                     <>
-                      <Button size="sm" className="btn-success-custom" onClick={() => handleSave(item.id)}>
+                      <Button size="sm" onClick={() => handleSave(item.id)}>
                         Save
                       </Button>
 
-                      <Button size="sm" className="btn-cancel" onClick={() => setEditId(null)}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditId(null)}
+                      >
                         Cancel
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button size="sm" className="btn-edit" onClick={() => handleEdit(item)}>
+                      <Button size="sm" onClick={() => handleEdit(item)}>
                         Edit
                       </Button>
 
-                      <Button size="sm" className="btn-delete" onClick={() => handleDelete(item.id)}>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(item.id)}
+                      >
                         Delete
                       </Button>
                     </>
                   )}
                 </div>
-
               </Card.Body>
             </Card>
           </Col>
@@ -317,6 +354,41 @@ function Dashboard() {
         <Button variant="secondary" className="mx-1" disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next ➡</Button>
       </div>
 
+      <div className="d-flex justify-content-center align-items-center mt-3 flex-wrap">
+
+        {/* PREV */}
+        <Button
+          variant="outline-dark"
+          className="mx-1 mb-1"
+          disabled={page === 1}
+          onClick={() => setPage(page - 1)}
+        >
+          ⬅ Prev
+        </Button>
+
+        {/* PAGE NUMBERS */}
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+          <Button
+            key={num}
+            variant={num === page ? "dark" : "outline-dark"}
+            className="mx-1 mb-1"
+            onClick={() => setPage(num)}
+          >
+            {num}
+          </Button>
+        ))}
+
+        {/* NEXT */}
+        <Button
+          variant="outline-dark"
+          className="mx-1 mb-1"
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next ➡
+        </Button>
+
+      </div>
     </Container>
   );
 }
